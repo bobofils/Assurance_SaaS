@@ -1,8 +1,8 @@
 import streamlit as st
 
 USERS = {
-    "admin": "admin123",
-    "agent": "agent123"
+    "admin": "Admin@2026",
+    "agent": "Agent@2026"
 }
 
 def login():
@@ -26,4 +26,4 @@ def login():
         else:
             st.error("Login incorrect ❌")
 
-    return False
+    return Falses
