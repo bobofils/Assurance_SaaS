@@ -1,11 +1,14 @@
 import sqlite3
 from datetime import datetime
+from security import hash_password, check_password
+
+DB_NAME = "users.db"
 
 # =========================
-# INIT DB USERS + CLIENTS
+# INIT DATABASE
 # =========================
 def init_users():
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
     # USERS TABLE
@@ -35,10 +38,46 @@ def init_users():
 
 
 # =========================
-# SAVE CLIENT
+# AUTH FUNCTIONS
+# =========================
+def create_user(username, password):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    try:
+        hashed = hash_password(password)
+
+        c.execute(
+            "INSERT INTO users (username, password) VALUES (?, ?)",
+            (username, hashed)
+        )
+
+        conn.commit()
+        return True
+
+    except:
+        return False
+
+    finally:
+        conn.close()
+
+
+def get_user(username):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM users WHERE username=?", (username,))
+    user = c.fetchone()
+
+    conn.close()
+    return user
+
+
+# =========================
+# CLIENT FUNCTIONS
 # =========================
 def save_client(age, revenu, couverture, risque, prime):
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
     c.execute("""
@@ -50,11 +89,8 @@ def save_client(age, revenu, couverture, risque, prime):
     conn.close()
 
 
-# =========================
-# GET CLIENTS
-# =========================
 def get_clients():
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
     c.execute("SELECT * FROM clients")
