@@ -22,7 +22,8 @@ if "user" not in st.session_state:
     auth_page()
     st.stop()
 
-st.title("🛡️ Assurance SaaS PRO - Version Entreprise")
+st.title("🛡️ Assurance SaaS - Version 2.0")
+st.caption("Système intelligent d’évaluation de risque assurance")
 
 st.sidebar.success(f"Connecté : {st.session_state['user']}")
 
