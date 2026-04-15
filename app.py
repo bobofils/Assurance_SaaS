@@ -21,7 +21,7 @@ if "user" not in st.session_state:
     login()
     st.stop()
 
-st.title("🛡️ Assurance SaaS PRO")
+st.title("🛡️ Assurance SaaS UPDATED")
 st.sidebar.success(f"Connecté : {st.session_state['user']}")
 
 # Déconnexion
