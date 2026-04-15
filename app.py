@@ -1,7 +1,9 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+import io
 from datetime import datetime
+from fpdf import FPDF
 
 from auth import auth_page
 from database import init_users, save_client, get_clients
@@ -16,18 +18,17 @@ model = load_model()
 st.set_page_config(page_title="Assurance SaaS PRO", layout="wide")
 
 # =========================
-# 🔐 AUTHENTIFICATION
+# AUTH
 # =========================
 if "user" not in st.session_state:
     auth_page()
     st.stop()
 
-st.title("🛡️ Assurance SaaS - Version 2.0")
+st.title("🛡️ Assurance SaaS - Version PRO 2.0")
 st.caption("Système intelligent d’évaluation de risque assurance")
 
 st.sidebar.success(f"Connecté : {st.session_state['user']}")
 
-# Déconnexion
 if st.sidebar.button("🔓 Déconnexion"):
     del st.session_state["user"]
     st.rerun()
@@ -75,7 +76,7 @@ st.info(f"💡 Revenu total : {revenu_total:,.0f} FCFA")
 st.warning(f"⚠️ Taux d’endettement : {taux_endettement:.2%}")
 
 # =========================
-# 💳 ASSURANCE DEMANDÉE
+# 💳 CONTRAT
 # =========================
 st.header("💳 Contrat d’assurance")
 
@@ -88,7 +89,7 @@ with col7:
     couverture = st.number_input("Montant couverture (FCFA)", 0, 50000000, 5000000)
 
 # =========================
-# 🚀 ANALYSE IA
+# 🚀 ANALYSE
 # =========================
 if st.button("📊 Analyser le risque assurance"):
 
@@ -99,9 +100,7 @@ if st.button("📊 Analyser le risque assurance"):
 
     risk = round((1 - proba) * 100, 2)
 
-    # =========================
-    # 🎯 SCORE BANCAIRE
-    # =========================
+    # SCORE
     if risk < 30:
         statut_risk = "🟢 Faible risque"
         coef = 0.02
@@ -115,10 +114,9 @@ if st.button("📊 Analyser le risque assurance"):
     prime = couverture * coef
 
     # =========================
-    # 📊 AFFICHAGE SCORE
+    # AFFICHAGE
     # =========================
     st.subheader("💳 Score de risque")
-
     st.metric("Score assurance", f"{risk} %", delta=statut_risk)
 
     st.subheader("📊 Visualisation")
@@ -127,42 +125,81 @@ if st.button("📊 Analyser le risque assurance"):
         "Fiabilité": [100 - risk]
     })
 
-    # =========================
-    # 🧠 ANALYSE IA
-    # =========================
     st.subheader("🧠 Analyse intelligente")
 
     if taux_endettement > 0.4:
-        st.warning("⚠️ Endettement élevé détecté")
+        st.warning("⚠️ Endettement élevé")
 
     if revenu_total < 300000:
-        st.warning("⚠️ Capacité financière faible")
+        st.warning("⚠️ Revenu faible")
 
     if pred == 1:
-        st.success("✔ Profil global acceptable")
+        st.success("✔ Profil acceptable")
     else:
-        st.error("❌ Profil à risque élevé")
+        st.error("❌ Profil à risque")
 
-    # =========================
-    # 💰 PRIME
-    # =========================
     st.subheader("💰 Prime d'assurance")
-
-    st.success(f"Prime estimée : {prime:,.0f} FCFA")
+    st.success(f"{prime:,.0f} FCFA")
 
     # =========================
-    # 💾 SAUVEGARDE
+    # SAVE DB
     # =========================
     save_client(age, revenu_total, couverture, risk, prime)
-
     st.success("Client enregistré avec succès ✅")
 
+    # =========================
+    # 📊 EXPORT EXCEL
+    # =========================
+    df_export = pd.DataFrame([{
+        "Age": age,
+        "Sexe": sexe,
+        "Revenu": revenu_total,
+        "Couverture": couverture,
+        "Risque": risk,
+        "Prime": prime,
+        "Date": datetime.now()
+    }])
+
+    buffer = io.BytesIO()
+    df_export.to_excel(buffer, index=False)
+
+    st.download_button(
+        "📥 Télécharger Excel",
+        data=buffer,
+        file_name="assurance_report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    # =========================
+    # 📄 EXPORT PDF
+    # =========================
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.cell(200, 10, "RAPPORT ASSURANCE", ln=True)
+    pdf.cell(200, 10, f"Age: {age}", ln=True)
+    pdf.cell(200, 10, f"Revenu: {revenu_total}", ln=True)
+    pdf.cell(200, 10, f"Couverture: {couverture}", ln=True)
+    pdf.cell(200, 10, f"Risque: {risk}%", ln=True)
+    pdf.cell(200, 10, f"Prime: {prime}", ln=True)
+
+    pdf_output = pdf.output(dest="S").encode("latin1")
+
+    st.download_button(
+        "📄 Télécharger PDF",
+        data=pdf_output,
+        file_name="assurance_report.pdf",
+        mime="application/pdf"
+    )
+
 # =========================
-# 📊 DASHBOARD ADMIN
+# 📊 ADMIN
 # =========================
 st.header("📊 Dashboard Admin")
 
 data = get_clients()
+
 df = pd.DataFrame(data, columns=[
     "ID", "Âge", "Revenu", "Couverture", "Risque", "Prime", "Date"
 ])
