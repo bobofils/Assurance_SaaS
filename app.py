@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import io
+import os
 from datetime import datetime
 from fpdf import FPDF
 
@@ -10,12 +11,18 @@ from database import init_users, save_client, get_clients
 from utils import load_model
 
 # =========================
-# INIT
+# CONFIG
 # =========================
-init_users()
+st.set_page_config(page_title="Assurance SaaS PRO", layout="wide")
+
+# =========================
+# INIT DB + MODEL
+# =========================
+init_users()  # 🔥 force création DB
 model = load_model()
 
-st.set_page_config(page_title="Assurance SaaS PRO", layout="wide")
+# DEBUG (à enlever après test)
+st.sidebar.write("📁 Fichiers:", os.listdir())
 
 # =========================
 # AUTH
@@ -24,7 +31,7 @@ if "user" not in st.session_state:
     auth_page()
     st.stop()
 
-st.title("🛡️ Assurance SaaS - Version PRO 2.0")
+st.title("🛡️ Assurance SaaS - Version PRO 2.1")
 st.caption("Système intelligent d’évaluation de risque assurance")
 
 st.sidebar.success(f"Connecté : {st.session_state['user']}")
@@ -69,7 +76,6 @@ with col5:
 
 revenu_total = revenu + autres_revenus
 charges_total = credit_actuel + autres_charges
-
 taux_endettement = charges_total / revenu_total if revenu_total > 0 else 0
 
 st.info(f"💡 Revenu total : {revenu_total:,.0f} FCFA")
@@ -93,105 +99,113 @@ with col7:
 # =========================
 if st.button("📊 Analyser le risque assurance"):
 
-    X = np.array([[age, revenu_total, couverture]])
+    try:
+        X = np.array([[age, revenu_total, couverture]])
 
-    pred = model.predict(X)[0]
-    proba = model.predict_proba(X)[0][1]
+        pred = model.predict(X)[0]
+        proba = model.predict_proba(X)[0][1]
 
-    risk = round((1 - proba) * 100, 2)
+        risk = round((1 - proba) * 100, 2)
 
-    # SCORE
-    if risk < 30:
-        statut_risk = "🟢 Faible risque"
-        coef = 0.02
-    elif risk < 60:
-        statut_risk = "🟡 Risque moyen"
-        coef = 0.05
-    else:
-        statut_risk = "🔴 Risque élevé"
-        coef = 0.10
+        # SCORE
+        if risk < 30:
+            statut_risk = "🟢 Faible risque"
+            coef = 0.02
+        elif risk < 60:
+            statut_risk = "🟡 Risque moyen"
+            coef = 0.05
+        else:
+            statut_risk = "🔴 Risque élevé"
+            coef = 0.10
 
-    prime = couverture * coef
+        prime = couverture * coef
 
-    # =========================
-    # AFFICHAGE
-    # =========================
-    st.subheader("💳 Score de risque")
-    st.metric("Score assurance", f"{risk} %", delta=statut_risk)
+        # =========================
+        # AFFICHAGE
+        # =========================
+        st.subheader("💳 Score de risque")
+        st.metric("Score assurance", f"{risk} %", delta=statut_risk)
 
-    st.subheader("📊 Visualisation")
-    st.bar_chart({
-        "Risque": [risk],
-        "Fiabilité": [100 - risk]
-    })
+        st.subheader("📊 Visualisation")
+        st.bar_chart({
+            "Risque": [risk],
+            "Fiabilité": [100 - risk]
+        })
 
-    st.subheader("🧠 Analyse intelligente")
+        st.subheader("🧠 Analyse intelligente")
 
-    if taux_endettement > 0.4:
-        st.warning("⚠️ Endettement élevé")
+        if taux_endettement > 0.4:
+            st.warning("⚠️ Endettement élevé")
 
-    if revenu_total < 300000:
-        st.warning("⚠️ Revenu faible")
+        if revenu_total < 300000:
+            st.warning("⚠️ Revenu faible")
 
-    if pred == 1:
-        st.success("✔ Profil acceptable")
-    else:
-        st.error("❌ Profil à risque")
+        if pred == 1:
+            st.success("✔ Profil acceptable")
+        else:
+            st.error("❌ Profil à risque")
 
-    st.subheader("💰 Prime d'assurance")
-    st.success(f"{prime:,.0f} FCFA")
+        st.subheader("💰 Prime d'assurance")
+        st.success(f"{prime:,.0f} FCFA")
 
-    # =========================
-    # SAVE DB
-    # =========================
-    save_client(age, revenu_total, couverture, risk, prime)
-    st.success("Client enregistré avec succès ✅")
+        # =========================
+        # SAVE DB
+        # =========================
+        save_client(age, revenu_total, couverture, risk, prime)
+        st.success("Client enregistré avec succès ✅")
 
-    # =========================
-    # 📊 EXPORT EXCEL
-    # =========================
-    df_export = pd.DataFrame([{
-        "Age": age,
-        "Sexe": sexe,
-        "Revenu": revenu_total,
-        "Couverture": couverture,
-        "Risque": risk,
-        "Prime": prime,
-        "Date": datetime.now()
-    }])
+        # =========================
+        # 📊 EXPORT EXCEL
+        # =========================
+        df_export = pd.DataFrame([{
+            "Age": age,
+            "Sexe": sexe,
+            "Situation": situation,
+            "Statut": statut,
+            "Revenu": revenu_total,
+            "Couverture": couverture,
+            "Risque": risk,
+            "Prime": prime,
+            "Date": datetime.now()
+        }])
 
-    buffer = io.BytesIO()
-    df_export.to_excel(buffer, index=False)
+        buffer = io.BytesIO()
+        df_export.to_excel(buffer, index=False)
 
-    st.download_button(
-        "📥 Télécharger Excel",
-        data=buffer,
-        file_name="assurance_report.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        st.download_button(
+            "📥 Télécharger Excel",
+            data=buffer,
+            file_name="assurance_report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
-    # =========================
-    # 📄 EXPORT PDF
-    # =========================
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
+        # =========================
+        # 📄 EXPORT PDF
+        # =========================
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(200, 10, "RAPPORT ASSURANCE", ln=True)
 
-    pdf.cell(200, 10, "RAPPORT ASSURANCE", ln=True)
-    pdf.cell(200, 10, f"Age: {age}", ln=True)
-    pdf.cell(200, 10, f"Revenu: {revenu_total}", ln=True)
-    pdf.cell(200, 10, f"Couverture: {couverture}", ln=True)
-    pdf.cell(200, 10, f"Risque: {risk}%", ln=True)
-    pdf.cell(200, 10, f"Prime: {prime}", ln=True)
+        pdf.set_font("Arial", size=10)
+        pdf.cell(200, 10, f"Date: {datetime.now()}", ln=True)
+        pdf.cell(200, 10, f"Age: {age}", ln=True)
+        pdf.cell(200, 10, f"Revenu: {revenu_total}", ln=True)
+        pdf.cell(200, 10, f"Couverture: {couverture}", ln=True)
+        pdf.cell(200, 10, f"Risque: {risk}%", ln=True)
+        pdf.cell(200, 10, f"Prime: {prime}", ln=True)
 
-    pdf_output = pdf.output(dest="S").encode("latin1")
+        pdf_output = pdf.output(dest="S").encode("latin1")
 
-    st.download_button(
-        "📄 Télécharger PDF",
-        data=pdf_output,
-        file_name="assurance_report.pdf",
-        mime="application/pdf"
-    )
+        st.download_button(
+            "📄 Télécharger PDF",
+            data=pdf_output,
+            file_name="assurance_report.pdf",
+            mime="application/pdf"
+        )
+
+    except Exception as e:
+        st.error(f"Erreur analyse: {e}")
 
 # =========================
 # 📊 ADMIN
@@ -205,4 +219,6 @@ df = pd.DataFrame(data, columns=[
 ])
 
 st.dataframe(df)
-st.bar_chart(df["Risque"])
+
+if not df.empty:
+    st.bar_chart(df["Risque"])
