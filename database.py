@@ -1,6 +1,6 @@
 import sqlite3
 from datetime import datetime
-from security import hash_password, check_password
+from security import hash_password
 
 DB_NAME = "users.db"
 
@@ -11,7 +11,6 @@ def init_users():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
-    # USERS TABLE
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,7 +19,6 @@ def init_users():
     )
     """)
 
-    # CLIENTS TABLE
     c.execute("""
     CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,7 +36,7 @@ def init_users():
 
 
 # =========================
-# AUTH FUNCTIONS
+# CREATE USER (SAFE)
 # =========================
 def create_user(username, password):
     conn = sqlite3.connect(DB_NAME)
@@ -55,13 +53,16 @@ def create_user(username, password):
         conn.commit()
         return True
 
-    except:
+    except sqlite3.IntegrityError:
         return False
 
     finally:
         conn.close()
 
 
+# =========================
+# GET USER
+# =========================
 def get_user(username):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
@@ -74,7 +75,7 @@ def get_user(username):
 
 
 # =========================
-# CLIENT FUNCTIONS
+# SAVE CLIENT
 # =========================
 def save_client(age, revenu, couverture, risque, prime):
     conn = sqlite3.connect(DB_NAME)
@@ -89,11 +90,14 @@ def save_client(age, revenu, couverture, risque, prime):
     conn.close()
 
 
+# =========================
+# GET CLIENTS
+# =========================
 def get_clients():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
-    c.execute("SELECT * FROM clients")
+    c.execute("SELECT * FROM clients ORDER BY id DESC")
     data = c.fetchall()
 
     conn.close()

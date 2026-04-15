@@ -3,11 +3,11 @@ from database import create_user, get_user
 from security import check_password
 
 # =========================
-# AUTH PAGE
+# AUTH PAGE (PRO SAFE)
 # =========================
 def auth_page():
 
-    st.title("🔐 Authentification")
+    st.title("🔐 Authentification SaaS")
 
     menu = st.radio("Menu", ["Login", "Signup"])
 
@@ -22,7 +22,13 @@ def auth_page():
 
         if st.button("Créer compte"):
 
-            if create_user(username, password):
+            if username == "" or password == "":
+                st.warning("⚠️ Champs obligatoires")
+                return
+
+            success = create_user(username, password)
+
+            if success:
                 st.success("Compte créé avec succès ✅")
             else:
                 st.error("Utilisateur déjà existant ❌")
@@ -38,9 +44,18 @@ def auth_page():
 
         if st.button("Se connecter"):
 
+            if username == "" or password == "":
+                st.warning("⚠️ Remplis tous les champs")
+                return
+
             user = get_user(username)
 
-            if user and check_password(password, user[2]):
+            if user is None:
+                st.error("Utilisateur introuvable ❌")
+                return
+
+            # user[2] = password hash
+            if check_password(password, user[2]):
 
                 st.session_state["user"] = username
                 st.success("Connexion réussie ✅")
@@ -48,4 +63,4 @@ def auth_page():
                 st.rerun()
 
             else:
-                st.error("Login incorrect ❌")
+                st.error("Mot de passe incorrect ❌")
