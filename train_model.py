@@ -2,6 +2,10 @@ from sklearn.ensemble import RandomForestClassifier
 import numpy as np
 import joblib
 
+# =========================
+# 📊 DATASET ASSURANCE PRO
+# =========================
+
 # [âge, revenu, couverture]
 X = np.array([
     [25, 200000, 1000000],
@@ -15,9 +19,19 @@ X = np.array([
 # 1 = bon profil, 0 = risque
 y = np.array([1, 1, 1, 0, 0, 1])
 
-model = RandomForestClassifier(n_estimators=100, random_state=42)
+# =========================
+# 🤖 TRAIN MODEL
+# =========================
+model = RandomForestClassifier(
+    n_estimators=100,
+    random_state=42
+)
+
 model.fit(X, y)
 
+# =========================
+# 💾 SAVE MODEL
+# =========================
 joblib.dump(model, "model.pkl")
 
-print("✅ Modèle assurance créé")
+print("✅ Modèle assurance créé avec succès")

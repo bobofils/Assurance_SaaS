@@ -1,18 +1,16 @@
 import sqlite3
+from security import hash_password, check_password
 
-def init_db():
+# INIT DB
+def init_users():
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS clients (
+    CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        age INTEGER,
-        revenu REAL,
-        couverture REAL,
-        risque REAL,
-        prime REAL,
-        date TEXT
+        username TEXT UNIQUE,
+        password TEXT
     )
     """)
 
@@ -20,21 +18,31 @@ def init_db():
     conn.close()
 
 
-def save_client(age, revenu, couverture, risque, prime):
+# ➕ CREATE USER
+def create_user(username, password):
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
 
-    c.execute("""
-    INSERT INTO clients (age, revenu, couverture, risque, prime, date)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
-    """, (age, revenu, couverture, risque, prime))
+    hashed = hash_password(password)
 
-    conn.commit()
-    conn.close()
+    try:
+        c.execute("INSERT INTO users (username, password) VALUES (?, ?)",
+                  (username, hashed))
+        conn.commit()
+        return True
+    except:
+        return False
+    finally:
+        conn.close()
 
 
-def get_clients():
+# 🔍 GET USER
+def get_user(username):
     conn = sqlite3.connect("users.db")
-    data = conn.execute("SELECT * FROM clients").fetchall()
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM users WHERE username=?", (username,))
+    user = c.fetchone()
+
     conn.close()
-    return data
+    return user

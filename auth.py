@@ -1,29 +1,43 @@
 import streamlit as st
+from database import create_user, get_user
+from security import check_password
 
-USERS = {
-    "admin": "Admin@2024",
-    "agent": "Agent@2024"
-}
 
-def login():
-    st.sidebar.title("🔐 Connexion")
+def auth_page():
+    st.sidebar.title("🔐 Authentification")
 
-    # ✅ Si déjà connecté → passer directement
-    if "user" in st.session_state:
-        return True
+    menu = st.sidebar.radio("Menu", ["Login", "Signup"])
 
-    user = st.sidebar.text_input("Utilisateur")
-    pwd = st.sidebar.text_input("Mot de passe", type="password")
+    # =====================
+    # SIGNUP
+    # =====================
+    if menu == "Signup":
+        st.subheader("📝 Créer un compte")
 
-    if st.sidebar.button("Connexion"):
-        if user in USERS and USERS[user] == pwd:
-            st.session_state["user"] = user
-            st.success("Connexion réussie ✅")
+        username = st.text_input("Nom utilisateur")
+        password = st.text_input("Mot de passe", type="password")
 
-            # 🔥 TRÈS IMPORTANT
-            st.rerun()
+        if st.button("Créer compte"):
+            if create_user(username, password):
+                st.success("Compte créé avec succès ✅")
+            else:
+                st.error("Utilisateur existe déjà ❌")
 
-        else:
-            st.error("Login incorrect ❌")
+    # =====================
+    # LOGIN
+    # =====================
+    if menu == "Login":
+        st.subheader("🔑 Connexion")
 
-    return Falses
+        username = st.text_input("Utilisateur")
+        password = st.text_input("Mot de passe", type="password")
+
+        if st.button("Se connecter"):
+            user = get_user(username)
+
+            if user and check_password(password, user[2]):
+                st.session_state["user"] = username
+                st.success("Connexion réussie ✅")
+                st.rerun()
+            else:
+                st.error("Identifiants incorrects ❌")

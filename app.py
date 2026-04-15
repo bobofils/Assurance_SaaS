@@ -1,38 +1,40 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+from datetime import datetime
 
-from auth import login
-from database import init_db, save_client, get_clients
+from auth import auth_page
+from database import init_users, save_client, get_clients
 from utils import load_model
 
 # =========================
 # INIT
 # =========================
-init_db()
+init_users()
 model = load_model()
 
 st.set_page_config(page_title="Assurance SaaS PRO", layout="wide")
 
 # =========================
-# LOGIN
+# 🔐 AUTHENTIFICATION
 # =========================
 if "user" not in st.session_state:
-    login()
+    auth_page()
     st.stop()
 
-st.title("🛡️ Assurance SaaS UPDATED")
+st.title("🛡️ Assurance SaaS PRO - Version Entreprise")
+
 st.sidebar.success(f"Connecté : {st.session_state['user']}")
 
 # Déconnexion
-if st.sidebar.button("Déconnexion"):
+if st.sidebar.button("🔓 Déconnexion"):
     del st.session_state["user"]
     st.rerun()
 
 # =========================
 # 👤 PROFIL CLIENT
 # =========================
-st.header("👤 Profil client")
+st.header("👤 Profil assuré")
 
 col1, col2, col3 = st.columns(3)
 
@@ -41,15 +43,15 @@ with col1:
     sexe = st.selectbox("Sexe", ["Homme", "Femme"])
 
 with col2:
-    situation = st.selectbox("Situation", ["Célibataire", "Marié(e)", "Divorcé(e)"])
-    statut = st.selectbox("Statut", ["Salarié", "Fonctionnaire", "Indépendant", "Sans emploi"])
+    situation = st.selectbox("Situation matrimoniale", ["Célibataire", "Marié(e)", "Divorcé(e)"])
+    statut = st.selectbox("Statut professionnel", ["Salarié", "Fonctionnaire", "Indépendant", "Sans emploi"])
 
 with col3:
     anciennete = st.number_input("Ancienneté (années)", 0, 40, 2)
-    compte = st.radio("Compte actif", ["Oui", "Non"])
+    compte_actif = st.radio("Compte bancaire actif", ["Oui", "Non"])
 
 # =========================
-# 💰 REVENUS & CHARGES
+# 💰 FINANCES
 # =========================
 st.header("💰 Revenus & Charges")
 
@@ -57,39 +59,37 @@ col4, col5 = st.columns(2)
 
 with col4:
     revenu = st.number_input("Revenu mensuel (FCFA)", 0, 10000000, 300000)
-    autres_revenus = st.number_input("Autres revenus", 0, 5000000, 0)
+    autres_revenus = st.number_input("Autres revenus (FCFA)", 0, 5000000, 0)
 
 with col5:
-    charges = st.number_input("Charges mensuelles", 0, 5000000, 0)
-    credit_actuel = st.number_input("Crédit en cours", 0, 5000000, 0)
+    credit_actuel = st.number_input("Mensualité crédit actuel (FCFA)", 0, 5000000, 0)
+    autres_charges = st.number_input("Autres charges (FCFA)", 0, 5000000, 0)
 
 revenu_total = revenu + autres_revenus
-charges_total = charges + credit_actuel
+charges_total = credit_actuel + autres_charges
 
-taux_endettement = 0
-if revenu_total > 0:
-    taux_endettement = charges_total / revenu_total
+taux_endettement = charges_total / revenu_total if revenu_total > 0 else 0
 
 st.info(f"💡 Revenu total : {revenu_total:,.0f} FCFA")
 st.warning(f"⚠️ Taux d’endettement : {taux_endettement:.2%}")
 
 # =========================
-# 💳 ASSURANCE
+# 💳 ASSURANCE DEMANDÉE
 # =========================
-st.header("💳 Assurance")
+st.header("💳 Contrat d’assurance")
 
 col6, col7 = st.columns(2)
 
 with col6:
-    type_assurance = st.selectbox("Type", ["Auto", "Santé", "Habitation"])
+    type_assurance = st.selectbox("Type d'assurance", ["Auto", "Santé", "Habitation"])
 
 with col7:
-    couverture = st.number_input("Montant couverture", 0, 50000000, 5000000)
+    couverture = st.number_input("Montant couverture (FCFA)", 0, 50000000, 5000000)
 
 # =========================
-# 🚀 ANALYSE
+# 🚀 ANALYSE IA
 # =========================
-if st.button("📊 Analyser le risque"):
+if st.button("📊 Analyser le risque assurance"):
 
     X = np.array([[age, revenu_total, couverture]])
 
@@ -98,24 +98,27 @@ if st.button("📊 Analyser le risque"):
 
     risk = round((1 - proba) * 100, 2)
 
-    # Score couleur
+    # =========================
+    # 🎯 SCORE BANCAIRE
+    # =========================
     if risk < 30:
-        couleur = "🟢 Bon"
+        statut_risk = "🟢 Faible risque"
         coef = 0.02
     elif risk < 60:
-        couleur = "🟡 Moyen"
+        statut_risk = "🟡 Risque moyen"
         coef = 0.05
     else:
-        couleur = "🔴 Risqué"
-        coef = 0.1
+        statut_risk = "🔴 Risque élevé"
+        coef = 0.10
 
     prime = couverture * coef
 
     # =========================
-    # 📊 RESULTATS
+    # 📊 AFFICHAGE SCORE
     # =========================
     st.subheader("💳 Score de risque")
-    st.metric("Score", f"{risk} %", delta=couleur)
+
+    st.metric("Score assurance", f"{risk} %", delta=statut_risk)
 
     st.subheader("📊 Visualisation")
     st.bar_chart({
@@ -126,30 +129,32 @@ if st.button("📊 Analyser le risque"):
     # =========================
     # 🧠 ANALYSE IA
     # =========================
-    st.subheader("🧠 Analyse IA")
+    st.subheader("🧠 Analyse intelligente")
 
     if taux_endettement > 0.4:
-        st.warning("Endettement élevé")
+        st.warning("⚠️ Endettement élevé détecté")
 
     if revenu_total < 300000:
-        st.warning("Revenu faible")
+        st.warning("⚠️ Capacité financière faible")
 
     if pred == 1:
-        st.success("Profil fiable")
+        st.success("✔ Profil global acceptable")
     else:
-        st.error("Profil risqué")
+        st.error("❌ Profil à risque élevé")
 
     # =========================
     # 💰 PRIME
     # =========================
-    st.subheader("💰 Prime Assurance")
-    st.write(f"Prime estimée : {prime:,.0f} FCFA")
+    st.subheader("💰 Prime d'assurance")
+
+    st.success(f"Prime estimée : {prime:,.0f} FCFA")
 
     # =========================
     # 💾 SAUVEGARDE
     # =========================
     save_client(age, revenu_total, couverture, risk, prime)
-    st.success("Client sauvegardé ✅")
+
+    st.success("Client enregistré avec succès ✅")
 
 # =========================
 # 📊 DASHBOARD ADMIN
@@ -157,9 +162,8 @@ if st.button("📊 Analyser le risque"):
 st.header("📊 Dashboard Admin")
 
 data = get_clients()
-
 df = pd.DataFrame(data, columns=[
-    "ID","Age","Revenu","Couverture","Risque","Prime","Date"
+    "ID", "Âge", "Revenu", "Couverture", "Risque", "Prime", "Date"
 ])
 
 st.dataframe(df)
