@@ -4,13 +4,15 @@ from security import hash_password
 
 DB_NAME = "users.db"
 
+
 # =========================
-# INIT DATABASE
+# INIT DB (SAFE + AUTO ADMIN)
 # =========================
 def init_users():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
+    # USERS
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,6 +21,7 @@ def init_users():
     )
     """)
 
+    # CLIENTS
     c.execute("""
     CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,12 +34,23 @@ def init_users():
     )
     """)
 
+    # =========================
+    # AUTO ADMIN (IMPORTANT)
+    # =========================
+    try:
+        c.execute(
+            "INSERT INTO users (username, password) VALUES (?, ?)",
+            ("admin", hash_password("admin123"))
+        )
+    except:
+        pass
+
     conn.commit()
     conn.close()
 
 
 # =========================
-# CREATE USER (SAFE)
+# CREATE USER
 # =========================
 def create_user(username, password):
     conn = sqlite3.connect(DB_NAME)
